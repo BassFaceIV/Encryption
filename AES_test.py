@@ -4,8 +4,8 @@ import random
 def randomText(stringSize):
 	string = ""
 
-	for character in xrange(stringSize):
-		string += str(unichr(random.randint(32, 126)))
+	for character in range(stringSize):
+		string += str(chr(random.randint(32, 126)))
 
 	return string
 
@@ -17,6 +17,12 @@ def generateKeys(numKeys, size = 0):
 		keys.append(key)
 
 	return keys
+
+def randomBytes(numBytes):
+	bytestring = bytearray([])
+
+	for x in range(numBytes):
+		bytestring.append(random.randint(0, 255))
 
 ####################################################################################
 
@@ -191,12 +197,14 @@ def testFormatStateArray():
 
 	print("Testing formatStateArray functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytes([0x32, 0x43, 0xf6, 0xa8,
+						0x88, 0x5a, 0x30, 0x8d,
+						0x31, 0x31, 0x98, 0xa2,
+						0xe0, 0x37, 0x07, 0x34])
 
 	formattedStateArray = AES.formatStateArray(stateArray)
-	print(len(formattedStateArray))
-	print(type(formattedStateArray[3]))
-	print(formattedStateArray)
+	for word in formattedStateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 	if((len(formattedStateArray) == 4) and (type(formattedStateArray[3]) is int)):
 		testWord = [ord(stateArray[2]), ord(stateArray[6]), ord(stateArray[10]), ord(stateArray[14])]
@@ -221,27 +229,35 @@ def testSubBytes():
 
 	print("Testing subBytes functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytes([0x32, 0x43, 0xf6, 0xa8,
+						0x88, 0x5a, 0x30, 0x8d,
+						0x31, 0x31, 0x98, 0xa2,
+						0xe0, 0x37, 0x07, 0x34])
+
 	stateArray = AES.formatStateArray(stateArray)
-	print(stateArray)
+	print("State In:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
-	rIndex = (stateArray[2] & byte1Mask) >> 20
-	cIndex = ((stateArray[2] & byte1Mask) >> 16) & nibbleMask
+	#rIndex = (stateArray[2] & byte1Mask) >> 20
+	#cIndex = ((stateArray[2] & byte1Mask) >> 16) & nibbleMask
 
-	print("%x" % (stateArray[2]))
-	print("(%x, %x)" % (rIndex, cIndex))
+	#print("%x" % (stateArray[2]))
+	#print("(%x, %x)" % (rIndex, cIndex))
 
-	newByte = int(AES.sBox[rIndex][cIndex], 16) << 16
-	print(AES.sBox[rIndex][cIndex])
+	#newByte = int(AES.sBox[rIndex][cIndex], 16) << 16
+	#print(AES.sBox[rIndex][cIndex])
 
 	stateArray = AES.subBytes(stateArray)
-	print(stateArray)
-	print("%x == %x") % ((stateArray[2] & byte1Mask), newByte)
+	print("State Out:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
+	#print("%x == %x") % ((stateArray[2] & byte1Mask), newByte)
 
-	if((stateArray[2] & byte1Mask) == newByte):
-		successes += 1
-	else:
-		failures += 1
+	#if((stateArray[2] & byte1Mask) == newByte):
+	#	successes += 1
+	#else:
+	#	failures += 1
 
 	print("Failures: %d Successes: %d" % (failures, successes))
 
@@ -253,12 +269,19 @@ def testShiftRows():
 
 	print("Testing shiftRows functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytes([0x32, 0x43, 0xf6, 0xa8,
+						0x88, 0x5a, 0x30, 0x8d,
+						0x31, 0x31, 0x98, 0xa2,
+						0xe0, 0x37, 0x07, 0x34])
 	stateArray = AES.formatStateArray(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State In:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 	stateArray = AES.shiftRows(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State Out:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 ####################################################################################
 
@@ -297,13 +320,20 @@ def testMixColumns():
 
 	print("Testing mixColumns functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytes([0x00, 0x11, 0x22, 0x33,
+						0x44, 0x55, 0x66, 0x77,
+						0x88, 0x99, 0xaa, 0xbb,
+						0xcc, 0xdd, 0xee, 0xff])
 
 	stateArray = AES.formatStateArray(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State In:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 	stateArray = AES.mixColumns(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State Out:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 ####################################################################################
 
@@ -311,13 +341,20 @@ def testInverseMixColumns():
 
 	print("Testing inverseMixColumns functionality")
 
-	stateArray = randomText(16)
+	stateArray = [0x8e, 0xa2, 0xb7, 0xca,
+				  0x51, 0x67, 0x45, 0xbf,
+				  0xea, 0xfc, 0x49, 0x90,
+				  0x4b, 0x49, 0x60, 0x89]
 
 	stateArray = AES.formatStateArray(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State In:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 	stateArray = AES.inverseMixColumns(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State Out:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 ####################################################################################
 
@@ -325,17 +362,34 @@ def testAddRoundKey():
 
 	print("Testing addRoundKey functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytes([0x00, 0x11, 0x22, 0x33,
+						0x44, 0x55, 0x66, 0x77,
+						0x88, 0x99, 0xaa, 0xbb,
+						0xcc, 0xdd, 0xee, 0xff])
 	stateArray = AES.formatStateArray(stateArray)
-	print("state: %x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
 
-	roundKey = generateKeys(1, 256)
-	roundKey = AES.formatKey(roundKey[0])
-	print("key: %x %x %x %x %x %x %x %x" % (roundKey[0], roundKey[1], roundKey[2], roundKey[3],
-											roundKey[4], roundKey[5], roundKey[6], roundKey[7]))
+	key = bytes([0x00, 0x01, 0x02, 0x03,
+				 0x04, 0x05, 0x06, 0x07,
+				 0x08, 0x09, 0x0a, 0x0b,
+				 0x0c, 0x0d, 0x0e, 0x0f,
+				 0x10, 0x11, 0x12, 0x13,
+				 0x14, 0x15, 0x16, 0x17,
+				 0x18, 0x19, 0x1a, 0x1b,
+				 0x1c, 0x1d, 0x1e, 0x1f])
 
-	stateArray = AES.addRoundKey(stateArray, roundKey)
-	print("state: %x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	#roundKey = generateKeys(1, 256)
+	#key = AES.formatKey(key)
+	keySchedule = AES.expandKey(key)
+
+	print(keySchedule)
+
+	for roundKeys in keySchedule:
+		for key in roundKeys:
+			print("key: %x %x %x %x" % (key[0], key[1], key[2], key[3]))
+
+	stateArray = AES.addRoundKey(stateArray, keySchedule[0])
+	for word in stateArray:
+		print("state: %x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 ####################################################################################
 
@@ -343,27 +397,49 @@ def testEncrypt():
 
 	print("Testing encrypt functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytes([0x00, 0x11, 0x22, 0x33,
+						0x44, 0x55, 0x66, 0x77,
+						0x88, 0x99, 0xaa, 0xbb,
+						0xcc, 0xdd, 0xee, 0xff])
 	stateArray = AES.formatStateArray(stateArray)
 
-	key = generateKeys(1, 256)
-	key = AES.formatKey(key[0])
+	print("Input State Array:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
+
+	key = bytes([0x00, 0x01, 0x02, 0x03,
+				 0x04, 0x05, 0x06, 0x07,
+				 0x08, 0x09, 0x0a, 0x0b,
+				 0x0c, 0x0d, 0x0e, 0x0f,
+				 0x10, 0x11, 0x12, 0x13,
+				 0x14, 0x15, 0x16, 0x17,
+				 0x18, 0x19, 0x1a, 0x1b,
+				 0x1c, 0x1d, 0x1e, 0x1f])
 
 	keySchedule = AES.expandKey(key)
 
-	AES.encrypt(stateArray, keySchedule)
+	stateArray = AES.encrypt(stateArray, keySchedule)
+
+	print("Output State Array:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 ####################################################################################
 
 def testInverseRotWord():
+	word = []
 
 	print("Testing inverseRotWord functionality")
 
-	word = random.randint(128000, 2048000000)
-	print("%x" % (word))
+	word = bytearray([0x10, 0x34, 0xfa, 0x4b])
 
-	word = AES.inverseRotWord(word)
-	print("%x" % (word))
+	print("Input Word:")
+	#print(word)
+	print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
+
+	word = AES.inverseRotWord(word, 2)
+	print("Output Word:")
+	print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 ####################################################################################
 
@@ -373,12 +449,19 @@ def testInverseShiftRows():
 
 	print("Testing inverseShiftRows functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytearray([0x8e, 0xa2, 0xb7, 0xca,
+							0x51, 0x67, 0x45, 0xbf,
+							0xea, 0xfc, 0x49, 0x90,
+							0x4b, 0x49, 0x60, 0x89])
 	stateArray = AES.formatStateArray(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State In:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 	stateArray = AES.inverseShiftRows(stateArray)
-	print("%x %x %x %x" % (stateArray[0], stateArray[1], stateArray[2], stateArray[3]))
+	print("State Out:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 ####################################################################################
 
@@ -390,27 +473,28 @@ def testInverseSubBytes():
 
 	print("Testing inverseSubBytes functionality")
 
-	stateArray = randomText(16)
+	stateArray = bytearray([0x8e, 0xa2, 0xb7, 0xca,
+							0x51, 0x67, 0x45, 0xbf,
+							0xea, 0xfc, 0x49, 0x90,
+							0x4b, 0x49, 0x60, 0x89])
 	stateArray = AES.formatStateArray(stateArray)
-	print(stateArray)
+	print("State In:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
-	rIndex = (stateArray[2] & byte1Mask) >> 20
-	cIndex = ((stateArray[2] & byte1Mask) >> 16) & nibbleMask
+	#rIndex = (stateArray[2] & byte1Mask) >> 20
+	#cIndex = ((stateArray[2] & byte1Mask) >> 16) & nibbleMask
 
-	print("%x" % (stateArray[2]))
-	print("(%x, %x)" % (rIndex, cIndex))
+	#print("%x" % (stateArray[2]))
+	#print("(%x, %x)" % (rIndex, cIndex))
 
-	newByte = int(AES.inverseSBox[rIndex][cIndex], 16) << 16
-	print(AES.inverseSBox[rIndex][cIndex])
+	#newByte = int(AES.sBox[rIndex][cIndex], 16) << 16
+	#print(AES.sBox[rIndex][cIndex])
 
 	stateArray = AES.inverseSubBytes(stateArray)
-	print(stateArray)
-	print("%x == %x" % ((stateArray[2] & byte1Mask), newByte))
-
-	if((stateArray[2] & byte1Mask) == newByte):
-		successes += 1
-	else:
-		failures += 1
+	print("State Out:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
 
 	print("Failures: %d Successes: %d" % (failures, successes))
 
@@ -418,23 +502,39 @@ def testInverseSubBytes():
 
 def testSBoxes():
 	testVector = []
+	resultVector = []
 	successes = 0
 	failures = 0
 
 	print("Testing sBox and inverseSBox functionality")
 
-	for x in xrange(64):
-		testVector.append(((x * 4) << 24) | (((x * 4) + 1) << 16) | (((x * 4) + 2) << 8) | ((x * 4) + 3))
-		testVector[x] = AES.subWord(testVector[x])
-		testVector[x] = AES.inverseSubWord(testVector[x])
+	for x in range(256):
+		testVector.append(x)
 
-	for x in xrange(256):
-		testByte = AES.extractByte(testVector[x / 4], x % 4)
-		if(testByte == x):
+	testVector = bytearray(testVector)
+
+	for x in range(0, 256, 4):
+		resultVector.append(AES.subWord(testVector[x : x + 4]))
+
+	print(resultVector[32])
+
+	for x in range(64):
+		resultVector.append(AES.inverseSubWord(resultVector[x]))
+
+	print(resultVector[32])
+
+	for x in range(0, 256, 4):
+		testByte0 = resultVector[int(x / 4)][x % 4]
+		#testByte1 = resultVector[x / 4][1]
+		#testByte2 = resultVector[x / 4][2]
+		#testByte3 = resultVector[x / 4][3]
+		#if((testByte0 == x) and (testByte1 == x) and (testByte2 == x) and (testByte3 == x)):
+		if(testByte0 == x):
 			successes += 1
 		else:
 			failures += 1
-			print("%d != %d" % (x, testByte))
+			print("%x != %x" % (testByte0, x))
+			#print("%x != %x or %x != %x or %x != %x or %x != %x" % (x, testByte0, x + 1, testByte1, x + 2, testByte2, x + 3, testByte3))
 
 	print("Failures: %d Successes: %d" % (failures, successes))
 
@@ -450,13 +550,53 @@ def testRetrieveInputBytes():
 		fp_out.write(outputBytes)
 	fp_out.close()
 
+####################################################################################
+
+def testAES():
+	print("Testing AES Encryption and Decryption")
+
+	key = [0x00, 0x01, 0x02, 0x03,
+		   0x04, 0x05, 0x06, 0x07,
+		   0x08, 0x09, 0x0a, 0x0b,
+		   0x0c, 0x0d, 0x0e, 0x0f,
+		   0x10, 0x11, 0x12, 0x13,
+		   0x14, 0x15, 0x16, 0x17,
+		   0x18, 0x19, 0x1a, 0x1b,
+		   0x1c, 0x1d, 0x1e, 0x1f]
+
+	stateArray = [0x00, 0x11, 0x22, 0x33,
+				  0x44, 0x55, 0x66, 0x77,
+				  0x88, 0x99, 0xaa, 0xbb,
+				  0xcc, 0xdd, 0xee, 0xff]
+	stateArray = AES.formatStateArray(stateArray)
+
+	print("Plaintext State Array:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
+
+	keySchedule = AES.expandKey(key)
+
+	stateArray = AES.encrypt(stateArray, keySchedule)
+
+	print("Encrypted State Array:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
+
+	stateArray = AES.decrypt(stateArray, keySchedule)
+
+	stateArray = AES.formatOutputStateArray(stateArray)
+
+	print("Decrypted State Array:")
+	for word in stateArray:
+		print("%x %x %x %x" % (word[0], word[1], word[2], word[3]))
+
 #testKeyFormat()
 #testRotWord()
 #testInverseRotWord()
 #testSubWord()
 #testXTime()
 #testRCon()
-testExpandKey()
+#testExpandKey()
 #testPlainTextFormat()
 #testFormatStateArray()
 #testSubBytes()
@@ -471,3 +611,4 @@ testExpandKey()
 #testEncrypt()
 #testSBoxes()
 #testRetrieveInputBytes()
+testAES()

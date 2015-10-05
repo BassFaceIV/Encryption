@@ -85,11 +85,8 @@ def formatPlainText(plainText):
 def formatStateArray(stateArray):
 	newStateArray = []
 
-	stateArray = map(ord, stateArray)
-
 	for z in range(4):
-		newState = [stateArray[z], stateArray[z + 4], stateArray[z + 8], stateArray[z + 12]]
-		newStateArray.append(reduce(lambda x, y: (x << 8) + y, newState))
+		newStateArray.append([stateArray[z], stateArray[z + 4], stateArray[z + 8], stateArray[z + 12]])
 
 	return newStateArray
 
@@ -116,19 +113,24 @@ def subWord(word):
 	return word
 
 def inverseSubWord(word):
-	nibbleMask = int('0f', 16)
+	nibbleMask = int('0000000f', 16)
 
-	x0 = word >> 28
-	x1 = (word >> 20) & nibbleMask
-	x2 = (word >> 12) & nibbleMask
-	x3 = (word >> 4) & nibbleMask
+	x0 = (word[0] >> 4) & nibbleMask
+	x1 = (word[1] >> 4) & nibbleMask
+	x2 = (word[2] >> 4) & nibbleMask
+	x3 = (word[3] >> 4) & nibbleMask
 
-	y0 = (word >> 24) & nibbleMask
-	y1 = (word >> 16) & nibbleMask
-	y2 = (word >> 8) & nibbleMask
-	y3 = word & nibbleMask
+	y0 = word[0] & nibbleMask
+	y1 = word[1] & nibbleMask
+	y2 = word[2] & nibbleMask
+	y3 = word[3] & nibbleMask
 
-	word = (int(inverseSBox[x0][y0], 16) << 24) | (int(inverseSBox[x1][y1], 16) << 16) | (int(inverseSBox[x2][y2], 16) << 8) | int(inverseSBox[x3][y3], 16)
+	#word = (int(inverseSBox[x0][y0], 16) << 24) | (int(inverseSBox[x1][y1], 16) << 16) | (int(inverseSBox[x2][y2], 16) << 8) | int(inverseSBox[x3][y3], 16)
+
+	word[0] = inverseSBox[x0][y0]
+	word[1] = inverseSBox[x1][y1]
+	word[2] = inverseSBox[x2][y2]
+	word[3] = inverseSBox[x3][y3]
 
 	return word
 
@@ -140,22 +142,26 @@ def rotWord(word, offset = 1):
 	#	byte0 = word & byte0Mask
 	#	word = ((word << 8) & byte02Mask) | (byte0 >> 24)
 
-	temp = word[0]
-
 	for x in range(4 * offset):
-		word[x] = word[(x + 1) % 4]
-
-	word[0 - offset] = temp
+		if(x % 4 == 0):
+			temp = word[0]
+		if(x % 4 == 3):
+			word[x % 4] = temp
+		else:
+			word[x % 4] = word[(x + 1) % 4]
 
 	return word
 
 def inverseRotWord(word, offset = 1):
-	byte3Mask = int('000000ff', 16)
-	byte13Mask = int('00ffffff', 16)
+	#last = len(word) - 1
 
-	for x in range(offset):
-		byte3 = word & byte3Mask
-		word = ((word >> 8) & byte13Mask) | (byte3 << 24)
+	for x in range(-1, (4 * -offset) - 1, -1):
+		if(x % 4 == 3):
+			temp = word[-1]
+		if(x % 4 == 0):
+			word[0] = temp
+		else:
+			word[x % 4] = word[(x - 1) % 4]
 
 	return word
 
@@ -180,7 +186,6 @@ def expandKey(key):
 
 	for roundNum in range(15):
 		for word in range(4):
-			print(roundNum, word)
 			indexStart = (roundNum * 16) + (word * 4)
 
 			if(roundNum < 2):
@@ -190,20 +195,18 @@ def expandKey(key):
 				if(word == 0):
 					if(roundNum % 2):
 						temp = subWord(keySchedule[indexStart - 4 : indexStart])
-						print("Temp(sub): %x %x %x %x" % (temp[0], temp[1], temp[2], temp[3]))
 					else:
 						temp = subWord(rotWord(keySchedule[indexStart - 4 : indexStart]))
 						temp[0] = temp[0] ^ rCon(iteration)
-						print("Temp(sub->rot): %x %x %x %x" % (temp[0], temp[1], temp[2], temp[3]))
 						iteration += 1
 				else:
 					temp = keySchedule[indexStart - 4 : indexStart]
-					print("Temp: %x %x %x %x" % (temp[0], temp[1], temp[2], temp[3]))
 				for x in range(4):
 					keySchedule.append(temp[x] ^ keySchedule[indexStart - 32 : indexStart - 28][x])
 			tempKeySchedule.append(keySchedule[indexStart : indexStart + 16])
+		finalKeySchedule.append(tempKeySchedule[(roundNum * 4) : ((roundNum + 1) * 4)])
 
-	return tempKeySchedule
+	return finalKeySchedule
 
 def subBytes(stateArray):
 	index = 0
@@ -249,106 +252,88 @@ def extractByte(word, index):
 	return (word >> (24 - (index * 8))) & byte3Mask
 
 def mixColumns(stateArray):
-	newStateArray = [0, 0, 0, 0]
-	newRow = 0
+	newStateArray = [[], [], [], []]
 
 	for column in range(4):
-		newStateArray[0] |= (gf2ModularDouble(extractByte(stateArray[0], column)) ^
-							 gf2ModularDouble(extractByte(stateArray[1], column)) ^
-							 extractByte(stateArray[1], column) ^
-							 extractByte(stateArray[2], column) ^
-							 extractByte(stateArray[3], column)) << (24 - (column * 8))
+		newStateArray[0].append(gf2ModularDouble(stateArray[0][column]) ^
+								gf2ModularDouble(stateArray[1][column]) ^
+								stateArray[1][column] ^
+								stateArray[2][column] ^
+								stateArray[3][column])
 		#print "0: %x" % (newStateArray[0])
 
-		newStateArray[1] |= (gf2ModularDouble(extractByte(stateArray[1], column)) ^
-							 gf2ModularDouble(extractByte(stateArray[2], column)) ^
-							 extractByte(stateArray[2], column) ^
-							 extractByte(stateArray[3], column) ^
-							 extractByte(stateArray[0], column)) << (24 - (column * 8))
+		newStateArray[1].append(gf2ModularDouble(stateArray[1][column]) ^
+								gf2ModularDouble(stateArray[2][column]) ^
+								stateArray[2][column] ^
+								stateArray[3][column] ^
+								stateArray[0][column])
 		#print "1: %x" % (newStateArray[1])
 
-		newStateArray[2] |= (gf2ModularDouble(extractByte(stateArray[2], column)) ^
-							 gf2ModularDouble(extractByte(stateArray[3], column)) ^
-							 extractByte(stateArray[3], column) ^
-							 extractByte(stateArray[0], column) ^
-							 extractByte(stateArray[1], column)) << (24 - (column * 8))
+		newStateArray[2].append(gf2ModularDouble(stateArray[2][column]) ^
+								gf2ModularDouble(stateArray[3][column]) ^
+								stateArray[3][column] ^
+								stateArray[0][column] ^
+								stateArray[1][column])
 		#print "2: %x" % (newStateArray[2])
 
-		newStateArray[3] |= (gf2ModularDouble(extractByte(stateArray[3], column)) ^
-							 gf2ModularDouble(extractByte(stateArray[0], column)) ^
-							 extractByte(stateArray[0], column) ^
-							 extractByte(stateArray[1], column) ^
-							 extractByte(stateArray[2], column)) << (24 - (column * 8))
+		newStateArray[3].append(gf2ModularDouble(stateArray[3][column]) ^
+								gf2ModularDouble(stateArray[0][column]) ^
+								stateArray[0][column] ^
+								stateArray[1][column] ^
+								stateArray[2][column])
 		#print "3: %x" % (newStateArray[3])
 
 	return newStateArray
 
 def inverseMixColumns(stateArray):
-	newStateArray = [0, 0, 0, 0]
-	newRow = 0
+	newStateArray = [[], [], [], []]
 
 	for column in range(4):
-		newStateArray[0] |= (gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[0], column)) ^ extractByte(stateArray[0], column)) ^ extractByte(stateArray[0], column)) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[1], column))) ^ extractByte(stateArray[1], column)) ^ extractByte(stateArray[1], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[2], column)) ^ extractByte(stateArray[2], column))) ^ extractByte(stateArray[2], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[3], column)))) ^ extractByte(stateArray[3], column)) << (24 - (column * 8))
+		newStateArray[0].append(gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[0][column]) ^ stateArray[0][column]) ^ stateArray[0][column]) ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column])) ^ stateArray[1][column]) ^ stateArray[1][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column]) ^ stateArray[2][column])) ^ stateArray[2][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column]))) ^ stateArray[3][column])
 		#print "0: %x" % (newStateArray[0])
 
-		newStateArray[1] |= (gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[1], column)) ^ extractByte(stateArray[1], column)) ^ extractByte(stateArray[1], column)) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[2], column))) ^ extractByte(stateArray[2], column)) ^ extractByte(stateArray[2], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[3], column)) ^ extractByte(stateArray[3], column))) ^ extractByte(stateArray[3], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[0], column)))) ^ extractByte(stateArray[0], column)) << (24 - (column * 8))
+		newStateArray[1].append(gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column]) ^ stateArray[1][column]) ^ stateArray[1][column]) ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column])) ^ stateArray[2][column]) ^ stateArray[2][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column]) ^ stateArray[3][column])) ^ stateArray[3][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[0][column]))) ^ stateArray[0][column])
 		#print "1: %x" % (newStateArray[1])
 
-		newStateArray[2] |= (gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[2], column)) ^ extractByte(stateArray[2], column)) ^ extractByte(stateArray[2], column)) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[3], column))) ^ extractByte(stateArray[3], column)) ^ extractByte(stateArray[3], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[0], column)) ^ extractByte(stateArray[0], column))) ^ extractByte(stateArray[0], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[1], column)))) ^ extractByte(stateArray[1], column)) << (24 - (column * 8))
+		newStateArray[2].append(gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column]) ^ stateArray[2][column]) ^ stateArray[2][column]) ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column])) ^ stateArray[3][column]) ^ stateArray[3][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[0][column]) ^ stateArray[0][column])) ^ stateArray[0][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column]))) ^ stateArray[1][column])
 		#print "2: %x" % (newStateArray[2])
 
-		newStateArray[3] |= (gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[3], column)) ^ extractByte(stateArray[3], column)) ^ extractByte(stateArray[3], column)) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[0], column))) ^ extractByte(stateArray[0], column)) ^ extractByte(stateArray[0], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[1], column)) ^ extractByte(stateArray[1], column))) ^ extractByte(stateArray[1], column) ^
-							 gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(extractByte(stateArray[2], column)))) ^ extractByte(stateArray[2], column)) << (24 - (column * 8))
+		newStateArray[3].append(gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column]) ^ stateArray[3][column]) ^ stateArray[3][column]) ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[0][column])) ^ stateArray[0][column]) ^ stateArray[0][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column]) ^ stateArray[1][column])) ^ stateArray[1][column] ^
+								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column]))) ^ stateArray[2][column])
 		#print "3: %x" % (newStateArray[3])
 
 	return newStateArray
 
 def addRoundKey(stateArray, roundKeys):
-	newState = [0, 0, 0, 0]
+	for word in range(4):
+		for byte in range(4):
+			stateArray[byte][word]  ^= roundKeys[word][byte]
 
-	for column in range(4):
-		for row in range(4):
-			newState[row] |= (extractByte(stateArray[row], column) ^ extractByte(roundKeys[row], column)) << (24 - (column * 8))
-
-	return newState
+	return stateArray
 
 def encrypt(stateArray, keySchedule):
-	for word in stateArray:
-		print("%x" % (word))
 	stateArray = addRoundKey(stateArray, keySchedule[0])
-	for word in stateArray:
-		print("%x" % (word))
 	
-	for roundNum in range(14):
-		print("%d: substituting bytes" % (roundNum))
+	for roundNum in range(13):
 		stateArray = subBytes(stateArray)
-		for word in stateArray:
-			print("%x" % (word))
-		print("%d: shifting rows" % (roundNum))
 		stateArray = shiftRows(stateArray)
-		for word in stateArray:
-			print("%x" % (word))
-		print("%d: mix columns" % (roundNum))
 		stateArray = mixColumns(stateArray)
-		for word in stateArray:
-			print("%x" % (word))
-		print("%d: adding round key" % (roundNum))
 		stateArray = addRoundKey(stateArray, keySchedule[roundNum + 1])
 
 	stateArray = subBytes(stateArray)
 	stateArray = shiftRows(stateArray)
-	stateArray = mixColumns(stateArray)
+	stateArray = addRoundKey(stateArray, keySchedule[14])
 
 	return stateArray
 
@@ -367,18 +352,13 @@ def decrypt(stateArray, keySchedule):
 
 	return stateArray
 
-def formatOutput(stateArray):
-	output = [0, 0, 0, 0]
-	column = 3
+def formatOutputStateArray(stateArray):
+	outputStateArray = []
 
-	for word in stateArray:
-		output[0] |= (extractByte(word, 0) << (8 * column))
-		output[1] |= (extractByte(word, 1) << (8 * column))
-		output[2] |= (extractByte(word, 2) << (8 * column))
-		output[3] |= (extractByte(word, 3) << (8 * column))
-		column -= 1
+	for z in range(4):
+		outputStateArray.append([stateArray[0][z], stateArray[1][z], stateArray[2][z], stateArray[3][z]])
 
-	return output
+	return outputStateArray
 
 #add ctr or cbc modes of operation to handle imperfect block sizes
 
