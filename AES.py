@@ -68,20 +68,6 @@ def formatKey(key):
 
 	return formattedKey
 
-def formatPlainText(plainText):
-	textLength = len(plainText)
-	numberBlocks = textLength / 16
-	zeroFill = textLength % 16
-	stateArrays = []
-
-	if(zeroFill != 0):
-		plainText += str(unichr(0)) * (16 - zeroFill)
-
-	#for x in range(numberBlocks):
-	#	stateArrays.append(plainText[(x * 16):(x + 1) * 16])
-
-	return plainText
-
 def formatStateArray(stateArray):
 	newStateArray = []
 
@@ -103,8 +89,6 @@ def subWord(word):
 	y2 = word[2] & nibbleMask
 	y3 = word[3] & nibbleMask
 
-	#word = (int(sBox[x0][y0], 16) << 24) | (int(sBox[x1][y1], 16) << 16) | (int(sBox[x2][y2], 16) << 8) | int(sBox[x3][y3], 16)
-
 	word[0] = sBox[x0][y0]
 	word[1] = sBox[x1][y1]
 	word[2] = sBox[x2][y2]
@@ -125,8 +109,6 @@ def inverseSubWord(word):
 	y2 = word[2] & nibbleMask
 	y3 = word[3] & nibbleMask
 
-	#word = (int(inverseSBox[x0][y0], 16) << 24) | (int(inverseSBox[x1][y1], 16) << 16) | (int(inverseSBox[x2][y2], 16) << 8) | int(inverseSBox[x3][y3], 16)
-
 	word[0] = inverseSBox[x0][y0]
 	word[1] = inverseSBox[x1][y1]
 	word[2] = inverseSBox[x2][y2]
@@ -135,13 +117,6 @@ def inverseSubWord(word):
 	return word
 
 def rotWord(word, offset = 1):
-	#byte0Mask = int('ff000000', 16)
-	#byte02Mask = int('ffffff00', 16)
-
-	#for x in range(offset):
-	#	byte0 = word & byte0Mask
-	#	word = ((word << 8) & byte02Mask) | (byte0 >> 24)
-
 	for x in range(4 * offset):
 		if(x % 4 == 0):
 			temp = word[0]
@@ -153,8 +128,6 @@ def rotWord(word, offset = 1):
 	return word
 
 def inverseRotWord(word, offset = 1):
-	#last = len(word) - 1
-
 	for x in range(-1, (4 * -offset) - 1, -1):
 		if(x % 4 == 3):
 			temp = word[-1]
@@ -247,10 +220,6 @@ def inverseShiftRows(stateArray):
 def gf2ModularDouble(multiplicand):
 	return (multiplicand << 1) ^ (int('0x11b', 16) & -(multiplicand >> 7))
 
-def extractByte(word, index):
-	byte3Mask = int('000000ff', 16)
-	return (word >> (24 - (index * 8))) & byte3Mask
-
 def mixColumns(stateArray):
 	newStateArray = [[], [], [], []]
 
@@ -260,28 +229,24 @@ def mixColumns(stateArray):
 								stateArray[1][column] ^
 								stateArray[2][column] ^
 								stateArray[3][column])
-		#print "0: %x" % (newStateArray[0])
 
 		newStateArray[1].append(gf2ModularDouble(stateArray[1][column]) ^
 								gf2ModularDouble(stateArray[2][column]) ^
 								stateArray[2][column] ^
 								stateArray[3][column] ^
 								stateArray[0][column])
-		#print "1: %x" % (newStateArray[1])
 
 		newStateArray[2].append(gf2ModularDouble(stateArray[2][column]) ^
 								gf2ModularDouble(stateArray[3][column]) ^
 								stateArray[3][column] ^
 								stateArray[0][column] ^
 								stateArray[1][column])
-		#print "2: %x" % (newStateArray[2])
 
 		newStateArray[3].append(gf2ModularDouble(stateArray[3][column]) ^
 								gf2ModularDouble(stateArray[0][column]) ^
 								stateArray[0][column] ^
 								stateArray[1][column] ^
 								stateArray[2][column])
-		#print "3: %x" % (newStateArray[3])
 
 	return newStateArray
 
@@ -293,25 +258,21 @@ def inverseMixColumns(stateArray):
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column])) ^ stateArray[1][column]) ^ stateArray[1][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column]) ^ stateArray[2][column])) ^ stateArray[2][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column]))) ^ stateArray[3][column])
-		#print "0: %x" % (newStateArray[0])
 
 		newStateArray[1].append(gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column]) ^ stateArray[1][column]) ^ stateArray[1][column]) ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column])) ^ stateArray[2][column]) ^ stateArray[2][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column]) ^ stateArray[3][column])) ^ stateArray[3][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[0][column]))) ^ stateArray[0][column])
-		#print "1: %x" % (newStateArray[1])
 
 		newStateArray[2].append(gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column]) ^ stateArray[2][column]) ^ stateArray[2][column]) ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column])) ^ stateArray[3][column]) ^ stateArray[3][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[0][column]) ^ stateArray[0][column])) ^ stateArray[0][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column]))) ^ stateArray[1][column])
-		#print "2: %x" % (newStateArray[2])
 
 		newStateArray[3].append(gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[3][column]) ^ stateArray[3][column]) ^ stateArray[3][column]) ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[0][column])) ^ stateArray[0][column]) ^ stateArray[0][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[1][column]) ^ stateArray[1][column])) ^ stateArray[1][column] ^
 								gf2ModularDouble(gf2ModularDouble(gf2ModularDouble(stateArray[2][column]))) ^ stateArray[2][column])
-		#print "3: %x" % (newStateArray[3])
 
 	return newStateArray
 
